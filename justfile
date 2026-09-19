@@ -29,9 +29,14 @@ check: test vet
 build:
     go build -o bin/orangepi-monitor ./cmd/orangepi-monitor
 
+# Validate only the declarative monitor configuration; this does not need MQTT
+# credentials, a broker connection, or Linux metric interfaces.
+validate config=config:
+    go run ./cmd/orangepi-monitor validate --config {{config}}
+
 # Run the monitor in the foreground. MQTT credential variables must be set.
 run config=config:
-    go run ./cmd/orangepi-monitor --config {{config}}
+    go run ./cmd/orangepi-monitor run --config {{config}}
 
 # Install or update the systemd unit on an Orange Pi. Create the environment
 # file with ORANGEPI_MONITOR_MQTT_USERNAME and ORANGEPI_MONITOR_MQTT_PASSWORD
@@ -56,3 +61,23 @@ service-status:
 # Follow service logs.
 service-logs:
     journalctl -u orangepi-monitor.service -f
+
+# Install the root-owned pull-based deployment agent for an Orange Pi.
+install-update-agent:
+    sudo install -m 0755 deploy/orangepi-monitor-update.sh /usr/local/sbin/orangepi-monitor-update
+    sudo install -m 0644 deploy/orangepi-monitor-update.service /etc/systemd/system/orangepi-monitor-update.service
+    sudo install -m 0644 deploy/orangepi-monitor-update.timer /etc/systemd/system/orangepi-monitor-update.timer
+    sudo systemctl daemon-reload
+
+# Check for a new main revision every five minutes and apply it safely.
+enable-update-agent:
+    sudo systemctl enable --now orangepi-monitor-update.timer
+
+# Display the schedule and last result of automatic deployment.
+update-agent-status:
+    systemctl status orangepi-monitor-update.timer
+    systemctl status orangepi-monitor-update.service
+
+# Follow automatic deployment logs.
+update-agent-logs:
+    journalctl -u orangepi-monitor-update.service -f

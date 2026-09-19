@@ -1,0 +1,9 @@
+[Unit]
+Description=Safely update Orange Pi Monitor from its main branch
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+TimeoutStartSec=15min
+ExecStart=/usr/local/sbin/orangepi-monitor-update
