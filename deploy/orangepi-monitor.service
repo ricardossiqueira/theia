@@ -1,0 +1,21 @@
+[Unit]
+Description=Orange Pi system metrics MQTT publisher
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=orangepi-monitor
+Group=orangepi-monitor
+EnvironmentFile=/etc/orangepi-monitor/environment
+ExecStart=/usr/local/bin/orangepi-monitor --config /etc/orangepi-monitor/config.yaml
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/proc /sys
+
+[Install]
+WantedBy=multi-user.target
