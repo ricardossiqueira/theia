@@ -18,7 +18,11 @@ unit="/etc/systemd/system/orangepi-monitor.service"
 log() { logger -t orangepi-monitor-update -- "$*"; }
 fail() { log "update skipped: $*"; exit 1; }
 run_as_deploy_user() {
-  runuser -u "$deploy_user" -- env HOME="$deploy_home" "$@"
+  # GOPRIVATE: github.com/ricardossiqueira/iot-device-core-go is a private
+  # sibling module this repo depends on directly - go must fetch it straight
+  # from git (via the deploy-user SSH config, see deploy/README.md) instead
+  # of the public module proxy/checksum database, which can't see it anyway.
+  runuser -u "$deploy_user" -- env HOME="$deploy_home" GOPRIVATE="github.com/ricardossiqueira/iot-device-core-go" "$@"
 }
 
 [[ -d "$repository/.git" ]] || fail "repository not found at $repository"

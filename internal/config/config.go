@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,19 +15,22 @@ import (
 )
 
 type Config struct {
-	MQTT    MQTT    `yaml:"mqtt"`
+	Device  Device  `yaml:"device"`
 	Monitor Monitor `yaml:"monitor"`
 }
 
-type MQTT struct {
-	URL         string `yaml:"url"`
-	ClientID    string `yaml:"client_id"`
-	UsernameEnv string `yaml:"username_env"`
-	PasswordEnv string `yaml:"password_env"`
+// Device configures the device platform v2 adapter: where the identity and
+// provisioned MQTT credentials are persisted, and the HTTP port the gateway
+// uses for discovery, pairing and provisioning. MQTT host/port/credentials
+// are deliberately absent here - they only ever come from the gateway's
+// provisioning payload, never from this file.
+type Device struct {
+	StorageDir    string   `yaml:"storage_dir"`
+	HTTPPort      uint16   `yaml:"http_port"`
+	PairingWindow Duration `yaml:"pairing_window"`
 }
 
 type Monitor struct {
-	DeviceID string   `yaml:"device_id"`
 	Interval Duration `yaml:"interval"`
 }
 
@@ -80,18 +82,14 @@ func Parse(data []byte) (Config, error) {
 }
 
 func (c Config) Validate() error {
-	parsed, err := url.Parse(c.MQTT.URL)
-	if err != nil || parsed.Host == "" || (parsed.Scheme != "mqtt" && parsed.Scheme != "mqtts") || parsed.Port() == "" {
-		return errors.New("mqtt.url must be a mqtt or mqtts URL with host and port")
+	if strings.TrimSpace(c.Device.StorageDir) == "" {
+		return errors.New("device.storage_dir is required")
 	}
-	if strings.TrimSpace(c.MQTT.ClientID) == "" {
-		return errors.New("mqtt.client_id is required")
+	if c.Device.HTTPPort == 0 {
+		return errors.New("device.http_port is required")
 	}
-	if strings.TrimSpace(c.MQTT.UsernameEnv) == "" || strings.TrimSpace(c.MQTT.PasswordEnv) == "" {
-		return errors.New("mqtt.username_env and mqtt.password_env are required")
-	}
-	if strings.TrimSpace(c.Monitor.DeviceID) == "" {
-		return errors.New("monitor.device_id is required")
+	if c.Device.PairingWindow < 0 {
+		return errors.New("device.pairing_window must not be negative")
 	}
 	if c.Monitor.Interval.TimeDuration() <= 0 {
 		return errors.New("monitor.interval must be greater than zero")

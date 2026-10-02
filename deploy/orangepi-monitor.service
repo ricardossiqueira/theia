@@ -7,7 +7,6 @@ Wants=network-online.target
 Type=simple
 User=orangepi-monitor
 Group=orangepi-monitor
-EnvironmentFile=/etc/orangepi-monitor/environment
 ExecStart=/usr/local/bin/orangepi-monitor --config /etc/orangepi-monitor/config.yaml
 Restart=on-failure
 RestartSec=5
@@ -16,6 +15,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadOnlyPaths=/proc /sys
+ReadWritePaths=/var/lib/orangepi-monitor
 
 [Install]
 WantedBy=multi-user.target

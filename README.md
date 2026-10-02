@@ -9,15 +9,20 @@ orangepi-monitor ── telemetry ──> Mosquitto ──> iot-gateway
                                               └──> CYD, via rota futura
 ```
 
-## Contrato MQTT
+## Device platform v2
 
-Com `device_id: orangepi-monitor`, o serviço publica em:
-
-```text
-devices/orangepi-monitor/telemetry
-```
-
-As mensagens usam QoS 1, não são retained e incluem `message_id` UUID v4 e `timestamp` UTC. Consulte [config.example.yaml](configs/config.example.yaml) e a unidade [systemd](deploy/orangepi-monitor.service).
+O monitor é um device v2 de verdade (ver
+[`iot-device-core-go`](../iot-device-core-go) e
+[`DEVICE_PLATFORM_V2_IMPLEMENTATION.md`](../DEVICE_PLATFORM_V2_IMPLEMENTATION.md)):
+sem credencial MQTT fixa em lugar nenhum. Na primeira execução, ele gera uma
+identidade (`device_uid` + chave Ed25519), se anuncia por mDNS
+(`_iot-device._tcp`) e serve `GET /v1/device-info`/`POST /v1/pair`/
+`POST /v1/provision` numa janela de pareamento — o operador registra pelo
+`gateway-web` (Discovery), que deriva e entrega a credencial MQTT. Só depois
+disso o monitor publica em `devices/<device_id>/telemetry` (QoS 1, não
+retained, `message_id`/`timestamp` no envelope). Detalhes operacionais e o
+schema do manifest estão em [deploy/README.md](deploy/README.md) e
+[configs/config.example.yaml](configs/config.example.yaml).
 
 ## Desenvolvimento
 

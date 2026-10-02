@@ -12,8 +12,15 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # iot-device-core-go is a private sibling module (github.com/ricardossiqueira/orangepi-monitor
+      # depends on it directly) - GOPRIVATE skips the public module proxy/checksum
+      # database for it, which can't see a private repo anyway.
+      GOPRIVATE: github.com/ricardossiqueira/iot-device-core-go
     steps:
       - uses: actions/checkout@v6
+      - name: Configure git for the private iot-device-core-go module
+        run: git config --global url."https://x-access-token:${{ secrets.IOT_DEVICE_CORE_GO_TOKEN }}@github.com/".insteadOf "https://github.com/"
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

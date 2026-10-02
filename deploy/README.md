@@ -2,31 +2,39 @@
 
 `orangepi-monitor.service` executa o monitor como o usuário de sistema sem
 login `orangepi-monitor`. A configuração YAML fica em
-`/etc/orangepi-monitor/config.yaml` e as credenciais MQTT ficam em
-`/etc/orangepi-monitor/environment`, separadas do repositório.
+`/etc/orangepi-monitor/config.yaml`; identidade e credenciais MQTT
+provisionadas ficam em `/var/lib/orangepi-monitor` (`identity.json`,
+`provisioning.json`), gravadas pelo próprio processo — nenhum segredo é
+criado manualmente.
 
 No Orange Pi, depois de atualizar o projeto, instale o binário e a unidade:
 
 ```bash
 cd ~/orangepi-monitor
 just install-service
-```
-
-Crie `/etc/orangepi-monitor/environment` com os nomes definidos no YAML:
-
-```ini
-ORANGEPI_MONITOR_MQTT_USERNAME=orangepi-monitor
-ORANGEPI_MONITOR_MQTT_PASSWORD=the-monitor-mqtt-password
-```
-
-Proteja o arquivo e habilite o serviço no boot:
-
-```bash
-sudo chown root:orangepi-monitor /etc/orangepi-monitor/environment
-sudo chmod 640 /etc/orangepi-monitor/environment
 just enable-service
 systemctl status orangepi-monitor.service
 ```
+
+## Registro como device v2
+
+Na primeira vez (sem `provisioning.json` em `/var/lib/orangepi-monitor`), o
+serviço sobe sem credenciais MQTT e entra numa janela de pareamento
+(`device.pairing_window`, padrão 10 minutos): ele se anuncia por mDNS
+(`_iot-device._tcp`) e serve `GET /v1/device-info` na porta
+`device.http_port`. Dentro dessa janela:
+
+1. Abra `gateway-web` → Discovery e confirme que `orangepi-monitor` aparece.
+2. Registre com um clique — o gateway pareia, deriva as credenciais MQTT e
+   provisiona o device.
+3. O serviço detecta o provisionamento (sem precisar reiniciar), conecta ao
+   Mosquitto com a credencial recebida e começa a publicar `telemetry`.
+
+Se a janela expirar antes do registro, reinicie o serviço
+(`sudo systemctl restart orangepi-monitor.service`) para abrir uma nova
+janela. Depois de provisionado, `/v1/pair` recusa qualquer nova tentativa —
+use `just forget` para apagar o provisionamento e reabrir o pareamento de
+propósito.
 
 Consulte os logs operacionais com:
 
@@ -37,15 +45,24 @@ just service-logs
 ## CI e atualizações automáticas
 
 `.github/workflows/ci.yml` executa verificação de formatação, testes, `vet` e
-build Linux ARM64 a cada push ou pull request para `main`. O Orange Pi não
-aceita conexões de entrada do GitHub: o timer
+build Linux ARM64 a cada push ou pull request para `main`. Como `go.mod`
+depende do módulo privado `iot-device-core-go`, o workflow precisa de um
+secret `IOT_DEVICE_CORE_GO_TOKEN` no repositório (**Settings** → **Secrets and
+variables** → **Actions**): um personal access token *fine-grained*,
+somente leitura, com acesso só ao conteúdo de `iot-device-core-go`. Sem esse
+secret, o passo "Configure git for the private iot-device-core-go module"
+falha ao buscar a dependência.
+
+O Orange Pi não aceita conexões de entrada do GitHub: o timer
 `orangepi-monitor-update.timer` verifica `main` a cada cinco minutos, executa
 testes, `vet`, build e validação offline da configuração instalada antes de
 reiniciar o monitor.
 
-O atualizador jamais copia um YAML do Git e não lê nem sobrescreve
-`/etc/orangepi-monitor/environment`. Ele aceita apenas um fast-forward. Se o
-novo binário ou unidade não iniciar, restaura as versões anteriores.
+O atualizador jamais copia um YAML do Git, nem sobrescreve
+`/etc/orangepi-monitor/config.yaml` ou o conteúdo de
+`/var/lib/orangepi-monitor` (identidade e provisionamento). Ele aceita apenas
+um fast-forward. Se o novo binário ou unidade não iniciar, restaura as
+versões anteriores.
 
 ### Acesso Git somente leitura
 
@@ -79,6 +96,40 @@ ssh -T git@github.com-orangepi-monitor
 cd ~/orangepi-monitor
 git remote set-url origin git@github.com-orangepi-monitor:ricardossiqueira/orangepi-monitor.git
 git fetch origin main
+```
+
+### Acesso à dependência privada `iot-device-core-go`
+
+`go.mod` depende diretamente de `github.com/ricardossiqueira/iot-device-core-go`,
+também privado. `go build`/`go test` (rodados pelo atualizador como `orangepi`,
+ver `GOPRIVATE` em `orangepi-monitor-update.sh`) buscam esse módulo via Git, não
+pelo proxy público — precisa da mesma receita acima, com uma segunda deploy
+key só de leitura:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/iot-device-core-go-deploy -C iot-device-core-go-deploy
+cat ~/.ssh/iot-device-core-go-deploy.pub
+```
+
+Adicione em **Settings** → **Deploy keys** do repositório
+`iot-device-core-go` (sem acesso de escrita), acrescente ao
+`~/.ssh/config`:
+
+```text
+Host github.com-iot-device-core-go
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/iot-device-core-go-deploy
+    IdentitiesOnly yes
+```
+
+E diga ao Git para reescrever a URL https que `go build` usa por padrão para
+esse host SSH (`go` não lê `~/.ssh/config` diretamente, mas respeita
+`url.insteadOf`):
+
+```bash
+chmod 600 ~/.ssh/iot-device-core-go-deploy
+git config --global url."git@github.com-iot-device-core-go:ricardossiqueira/iot-device-core-go.git".insteadOf "https://github.com/ricardossiqueira/iot-device-core-go"
 ```
 
 ### Habilitar o agente de atualização

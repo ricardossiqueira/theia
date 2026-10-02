@@ -10,24 +10,32 @@ func TestParseValidConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse() error = %v", err)
 	}
-	if cfg.Monitor.DeviceID != "orangepi-monitor" || cfg.Monitor.Interval.TimeDuration().Seconds() != 2 {
+	if cfg.Device.StorageDir != "/var/lib/orangepi-monitor" || cfg.Device.HTTPPort != 8090 || cfg.Monitor.Interval.TimeDuration().Seconds() != 2 {
 		t.Fatalf("config = %#v", cfg)
+	}
+}
+
+func TestParseAllowsOmittedPairingWindow(t *testing.T) {
+	data := strings.Replace(validConfig, "  pairing_window: 10m\n", "", 1)
+	cfg, err := Parse([]byte(data))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if cfg.Device.PairingWindow != 0 {
+		t.Fatalf("PairingWindow = %v, want 0 (defers to the library default)", cfg.Device.PairingWindow)
 	}
 }
 
 func TestParseRejectsInvalidConfig(t *testing.T) {
 	tests := []struct{ name, replace, want string }{
-		{"missing credentials", "  password_env: ORANGEPI_MONITOR_MQTT_PASSWORD\n", "password_env"},
+		{"missing storage_dir", "  storage_dir: /var/lib/orangepi-monitor\n", ""},
+		{"missing http_port", "  http_port: 8090\n", ""},
+		{"negative pairing_window", "pairing_window: 10m", "pairing_window: -1s"},
 		{"invalid interval", "interval: 2s", "interval: 0s"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			data := validConfig
-			if test.name == "invalid interval" {
-				data = strings.Replace(data, test.replace, test.want, 1)
-			} else {
-				data = strings.Replace(data, test.replace, "", 1)
-			}
+			data := strings.Replace(validConfig, test.replace, test.want, 1)
 			if _, err := Parse([]byte(data)); err == nil {
 				t.Fatal("Parse() error = nil")
 			}
@@ -35,12 +43,10 @@ func TestParseRejectsInvalidConfig(t *testing.T) {
 	}
 }
 
-const validConfig = `mqtt:
-  url: mqtt://127.0.0.1:1883
-  client_id: orangepi-monitor
-  username_env: ORANGEPI_MONITOR_MQTT_USERNAME
-  password_env: ORANGEPI_MONITOR_MQTT_PASSWORD
+const validConfig = `device:
+  storage_dir: /var/lib/orangepi-monitor
+  http_port: 8090
+  pairing_window: 10m
 monitor:
-  device_id: orangepi-monitor
   interval: 2s
 `

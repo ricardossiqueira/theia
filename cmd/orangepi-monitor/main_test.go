@@ -23,23 +23,9 @@ func TestRunValidate(t *testing.T) {
 	}
 }
 
-func TestRunValidateDoesNotRequireCredentials(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "monitor.yaml")
-	if err := os.WriteFile(path, []byte(validConfig), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("ORANGEPI_MONITOR_MQTT_USERNAME", "")
-	t.Setenv("ORANGEPI_MONITOR_MQTT_PASSWORD", "")
-
-	var stdout, stderr bytes.Buffer
-	if code := run([]string{"validate", "--config", path}, &stdout, &stderr); code != 0 {
-		t.Fatalf("run() = %d, stderr = %s", code, stderr.String())
-	}
-}
-
 func TestRunValidateRejectsInvalidConfig(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "invalid.yaml")
-	if err := os.WriteFile(path, []byte("mqtt: ["), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("device: ["), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -58,12 +44,45 @@ func TestRunRejectsUnknownCommand(t *testing.T) {
 	}
 }
 
-const validConfig = `mqtt:
-  url: mqtt://127.0.0.1:1883
-  client_id: orangepi-monitor
-  username_env: ORANGEPI_MONITOR_MQTT_USERNAME
-  password_env: ORANGEPI_MONITOR_MQTT_PASSWORD
+func TestRunForgetClearsProvisioning(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "monitor.yaml")
+	storageDir := filepath.Join(dir, "storage")
+	if err := os.MkdirAll(storageDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	config := strings.Replace(validConfig, "storage_dir: /var/lib/orangepi-monitor", "storage_dir: "+filepath.ToSlash(storageDir), 1)
+	if err := os.WriteFile(path, []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(storageDir, "provisioning.json"), []byte(`{"device_id":"d"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"forget", "--config", path}, &stdout, &stderr); code != 0 {
+		t.Fatalf("run() = %d, stderr = %s", code, stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(storageDir, "provisioning.json")); !os.IsNotExist(err) {
+		t.Fatalf("provisioning.json still exists: %v", err)
+	}
+}
+
+func TestRunForgetRequiresValidConfig(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "invalid.yaml")
+	if err := os.WriteFile(path, []byte("device: ["), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"forget", "--config", path}, &stdout, &stderr); code != 1 {
+		t.Fatalf("run() = %d, stderr = %q", code, stderr.String())
+	}
+}
+
+const validConfig = `device:
+  storage_dir: /var/lib/orangepi-monitor
+  http_port: 8090
+  pairing_window: 10m
 monitor:
-  device_id: orangepi-monitor
   interval: 2s
 `

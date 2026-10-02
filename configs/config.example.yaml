@@ -1,9 +1,7 @@
-mqtt:
-  url: mqtt://127.0.0.1:1883
-  client_id: orangepi-monitor
-  username_env: ORANGEPI_MONITOR_MQTT_USERNAME
-  password_env: ORANGEPI_MONITOR_MQTT_PASSWORD
+device:
+  storage_dir: /var/lib/orangepi-monitor
+  http_port: 8090
+  pairing_window: 10m
 
 monitor:
-  device_id: orangepi-monitor
   interval: 2s
