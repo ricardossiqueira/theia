@@ -32,6 +32,13 @@ func Manifest() manifest.Manifest {
 					"uptime_s":        field("integer", true),
 				}),
 			}},
+			// Must be a non-nil empty slice, not the zero value: encoding/json
+			// marshals a nil slice as "null", which violates the manifest
+			// schema's "subscribe must be an array" contract and crashes
+			// gateway-web (DeviceInterface and friends call .flatMap on it
+			// unconditionally). contracts/device-v2/fixtures/orangepi-manifest.json
+			// already writes "subscribe":[] explicitly for the same reason.
+			Subscribe: []manifest.Input{},
 		},
 	}
 }
