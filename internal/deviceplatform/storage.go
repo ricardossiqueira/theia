@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ricardossiqueira/iot-device-core-go/platform"
+	"github.com/ricardossiqueira/athena-go/platform"
 )
 
 // FileStorage persists the two device-local documents the core needs as

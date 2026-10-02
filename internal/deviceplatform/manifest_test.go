@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ricardossiqueira/iot-device-core-go/manifest"
+	"github.com/ricardossiqueira/athena-go/manifest"
 )
 
 // TestManifestNeverEmitsNullSubscribe is a regression test: a nil (zero-value)

@@ -45,13 +45,9 @@ just service-logs
 ## CI e atualizações automáticas
 
 `.github/workflows/ci.yml` executa verificação de formatação, testes, `vet` e
-build Linux ARM64 a cada push ou pull request para `main`. Como `go.mod`
-depende do módulo privado `iot-device-core-go`, o workflow precisa de um
-secret `IOT_DEVICE_CORE_GO_TOKEN` no repositório (**Settings** → **Secrets and
-variables** → **Actions**): um personal access token *fine-grained*,
-somente leitura, com acesso só ao conteúdo de `iot-device-core-go`. Sem esse
-secret, o passo "Configure git for the private iot-device-core-go module"
-falha ao buscar a dependência.
+build Linux ARM64 a cada push ou pull request para `main`. A dependência
+`github.com/ricardossiqueira/athena-go` é pública; a CI não precisa de token
+adicional para baixá-la.
 
 O Orange Pi não aceita conexões de entrada do GitHub: o timer
 `orangepi-monitor-update.timer` verifica `main` a cada cinco minutos, executa
@@ -96,40 +92,6 @@ ssh -T git@github.com-orangepi-monitor
 cd ~/orangepi-monitor
 git remote set-url origin git@github.com-orangepi-monitor:ricardossiqueira/orangepi-monitor.git
 git fetch origin main
-```
-
-### Acesso à dependência privada `iot-device-core-go`
-
-`go.mod` depende diretamente de `github.com/ricardossiqueira/iot-device-core-go`,
-também privado. `go build`/`go test` (rodados pelo atualizador como `orangepi`,
-ver `GOPRIVATE` em `orangepi-monitor-update.sh`) buscam esse módulo via Git, não
-pelo proxy público — precisa da mesma receita acima, com uma segunda deploy
-key só de leitura:
-
-```bash
-ssh-keygen -t ed25519 -f ~/.ssh/iot-device-core-go-deploy -C iot-device-core-go-deploy
-cat ~/.ssh/iot-device-core-go-deploy.pub
-```
-
-Adicione em **Settings** → **Deploy keys** do repositório
-`iot-device-core-go` (sem acesso de escrita), acrescente ao
-`~/.ssh/config`:
-
-```text
-Host github.com-iot-device-core-go
-    HostName github.com
-    User git
-    IdentityFile ~/.ssh/iot-device-core-go-deploy
-    IdentitiesOnly yes
-```
-
-E diga ao Git para reescrever a URL https que `go build` usa por padrão para
-esse host SSH (`go` não lê `~/.ssh/config` diretamente, mas respeita
-`url.insteadOf`):
-
-```bash
-chmod 600 ~/.ssh/iot-device-core-go-deploy
-git config --global url."git@github.com-iot-device-core-go:ricardossiqueira/iot-device-core-go.git".insteadOf "https://github.com/ricardossiqueira/iot-device-core-go"
 ```
 
 ### Habilitar o agente de atualização

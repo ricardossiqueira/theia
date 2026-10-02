@@ -1,4 +1,4 @@
-// Package deviceplatform adapts orangepi-monitor to iot-device-core-go: the
+// Package deviceplatform adapts orangepi-monitor to athena-go: the
 // manifest declaration, file-based storage, HTTP inspection/pairing server
 // and mDNS announcement that make it a real device platform v2 device.
 package deviceplatform
@@ -6,7 +6,7 @@ package deviceplatform
 import (
 	"encoding/json"
 
-	"github.com/ricardossiqueira/iot-device-core-go/manifest"
+	"github.com/ricardossiqueira/athena-go/manifest"
 )
 
 // Manifest matches contracts/device-v2/fixtures/orangepi-manifest.json and

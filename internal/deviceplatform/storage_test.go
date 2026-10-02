@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/ricardossiqueira/iot-device-core-go/platform"
+	"github.com/ricardossiqueira/athena-go/platform"
 )
 
 func TestFileStorageRoundTrip(t *testing.T) {

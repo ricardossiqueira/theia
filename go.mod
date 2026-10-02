@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1
-	github.com/ricardossiqueira/iot-device-core-go v0.0.0-20261002192947-27ccdae833e1
+	github.com/ricardossiqueira/athena-go v0.0.0-20261002215222-dc1eb55eeb1b
 	gopkg.in/yaml.v3 v3.0.1
 )
 

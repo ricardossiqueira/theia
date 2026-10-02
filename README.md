@@ -12,7 +12,7 @@ orangepi-monitor ── telemetry ──> Mosquitto ──> iot-gateway
 ## Device platform v2
 
 O monitor é um device v2 de verdade (ver
-[`iot-device-core-go`](../iot-device-core-go) e
+[`athena-go`](https://github.com/ricardossiqueira/athena-go) e
 [`DEVICE_PLATFORM_V2_IMPLEMENTATION.md`](../DEVICE_PLATFORM_V2_IMPLEMENTATION.md)):
 sem credencial MQTT fixa em lugar nenhum. Na primeira execução, ele gera uma
 identidade (`device_uid` + chave Ed25519), se anuncia por mDNS

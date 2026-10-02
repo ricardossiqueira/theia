@@ -13,8 +13,8 @@ import (
 	"time"
 
 	paho "github.com/eclipse/paho.mqtt.golang"
-	"github.com/ricardossiqueira/iot-device-core-go/runtime"
-	"github.com/ricardossiqueira/iot-device-core-go/session"
+	"github.com/ricardossiqueira/athena-go/runtime"
+	"github.com/ricardossiqueira/athena-go/session"
 
 	"github.com/ricardossiqueira/orangepi-monitor/internal/config"
 	"github.com/ricardossiqueira/orangepi-monitor/internal/deviceplatform"
