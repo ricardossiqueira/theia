@@ -91,12 +91,11 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Test
-        run: go test ./...
-
-      - name: Vet
-        run: go vet ./...
-
+      # No test/vet here on purpose: this device has neither the RAM nor
+      # the CPU headroom to run the suite natively alongside whatever else
+      # is running on it, and verify (needs:, above) already did on hosted
+      # CI for this exact commit. main is trusted to already pass what's
+      # required.
       - name: Build native ARM64 binary
         run: |
           mkdir -p stage
