@@ -1,0 +1,48 @@
+# Podman Quadlet unit - installed as /etc/containers/systemd/orangepi-monitor.container.
+# Replaces the old bare-metal orangepi-monitor.service. See
+# orangepi-deploy/README.md for bootstrap (Podman install, host directory
+# ownership).
+#
+# The image is built on GitHub-hosted CI (.github/workflows/ci.yml's
+# publish-image job) and pushed to ghcr.io - nothing builds on the Orange
+# Pi itself. AutoUpdate=registry + the podman-auto-update.timer installed
+# by orangepi-deploy pulls and restarts this on a new push to main,
+# replacing the old orangepi-monitor-update.timer entirely.
+
+[Unit]
+Description=Orange Pi system metrics MQTT publisher (container)
+After=network-online.target mosquitto-dynsec.service
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/ricardossiqueira/orangepi-monitor:latest
+AutoUpdate=registry
+# Host networking, not bridged/NAT: this process announces itself via
+# mDNS (_iot-device._tcp) for the gateway to discover during pairing,
+# which needs real LAN multicast reachability.
+Network=host
+Exec=run --config /etc/orangepi-monitor/config.yaml
+Volume=/etc/orangepi-monitor:/etc/orangepi-monitor:ro
+# Identity (identity.json) is this device's long-term identity - it must
+# never be baked into an image or lost across container recreation.
+Volume=/var/lib/orangepi-monitor:/var/lib/orangepi-monitor:rw
+# Forwards the binary's own sd_notify call (internal/sdnotify,
+# unchanged from the bare-metal setup) through to the host's systemd -
+# this is what makes Type=notify-equivalent readiness work the same way
+# it did outside a container: READY=1 only after MQTT connect + first
+# telemetry publish, not merely "the process started." (Quadlet already
+# sets Type=notify by default for .container units; Notify=true is what
+# makes it proxy the container's own sd_notify call instead of podman
+# reporting ready the instant the process starts.)
+Notify=true
+
+[Service]
+Restart=on-failure
+RestartSec=5
+# An unprovisioned device waits out its whole pairing window
+# (device.pairing_window, operator-paced) before connecting to MQTT and
+# signaling readiness - a fixed timeout would kill that legitimate wait.
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
