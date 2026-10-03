@@ -32,9 +32,11 @@ jobs:
         run: |
           mkdir -p release
           CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags "-X main.version=${GITHUB_SHA}" -o release/orangepi-monitor ./cmd/orangepi-monitor
-          tar -C release -czf release/orangepi-monitor-linux-arm64.tar.gz orangepi-monitor
+          cp deploy/orangepi-monitor.service release/orangepi-monitor.service
+          tar -C release -czf release/orangepi-monitor-linux-arm64.tar.gz orangepi-monitor orangepi-monitor.service
           sha256="$(sha256sum release/orangepi-monitor-linux-arm64.tar.gz | awk '{print $1}')"
-          printf '{\n  "schema_version": 1,\n  "revision": "%s",\n  "artifacts": [\n    {\n      "name": "orangepi-monitor",\n      "architecture": "linux-arm64",\n      "file": "orangepi-monitor-linux-arm64.tar.gz",\n      "sha256": "%s"\n    }\n  ]\n}\n' "$GITHUB_SHA" "$sha256" > release/release-manifest.json
+          unit_sha256="$(sha256sum release/orangepi-monitor.service | awk '{print $1}')"
+          printf '{\n  "schema_version": 2,\n  "revision": "%s",\n  "component": "monitor",\n  "artifacts": [\n    {\n      "name": "orangepi-monitor",\n      "architecture": "linux-arm64",\n      "file": "orangepi-monitor-linux-arm64.tar.gz",\n      "sha256": "%s"\n    }\n  ],\n  "units": [\n    {\n      "name": "orangepi-monitor.service",\n      "file": "orangepi-monitor.service",\n      "sha256": "%s"\n    }\n  ]\n}\n' "$GITHUB_SHA" "$sha256" "$unit_sha256" > release/release-manifest.json
 
       - uses: actions/upload-artifact@v4
         with:
@@ -76,3 +78,17 @@ jobs:
             --notes "Linux ARM64 artifact built by CI for ${GITHUB_SHA}." \
             release/orangepi-monitor-linux-arm64.tar.gz \
             release/release-manifest.json
+
+  deploy:
+    needs: publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, arm64, orangepi-monitor-deploy]
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: orangepi-monitor-linux-arm64
+          path: release
+
+      - name: Apply release to the Orange Pi
+        run: sudo /usr/local/sbin/orangepi-apply monitor release

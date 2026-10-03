@@ -19,6 +19,7 @@ import (
 	"github.com/ricardossiqueira/orangepi-monitor/internal/config"
 	"github.com/ricardossiqueira/orangepi-monitor/internal/deviceplatform"
 	"github.com/ricardossiqueira/orangepi-monitor/internal/metrics"
+	"github.com/ricardossiqueira/orangepi-monitor/internal/sdnotify"
 )
 
 // version is overridden at build time via -ldflags "-X main.version=...".
@@ -176,27 +177,42 @@ func runMonitor(args []string, stderr io.Writer) int {
 		logger.Error("collector setup failed", "error", err)
 		return 1
 	}
-	publish := func() {
+	// publish returns its error (rather than only logging it) so the first
+	// call below can gate the systemd readiness notification: subsequent
+	// ticker-driven calls still just log, matching the previous behavior.
+	publish := func() error {
 		status, err := collector.Collect()
 		if err != nil {
 			logger.Error("metrics collection failed", "error", err)
-			return
+			return err
 		}
 		fields, err := metrics.StatusFields(status)
 		if err != nil {
 			logger.Error("telemetry encoding failed", "error", err)
-			return
+			return err
 		}
 		message, err := rt.Telemetry(fields)
 		if err != nil {
 			logger.Error("telemetry envelope failed", "error", err)
-			return
+			return err
 		}
-		if err := wait(ctx, client.Publish(message.Topic, message.QoS, message.Retained, message.Payload)); err != nil && ctx.Err() == nil {
-			logger.Error("telemetry publish failed", "error", err)
+		if err := wait(ctx, client.Publish(message.Topic, message.QoS, message.Retained, message.Payload)); err != nil {
+			if ctx.Err() == nil {
+				logger.Error("telemetry publish failed", "error", err)
+			}
+			return err
+		}
+		return nil
+	}
+	// Only the first successful publish - MQTT connected and real telemetry
+	// delivered - signals readiness. A Type=notify unit then blocks
+	// `systemctl start`/`restart` on this, instead of declaring success the
+	// moment the process merely starts (see deploy/orangepi-monitor.service).
+	if err := publish(); err == nil {
+		if err := sdnotify.Ready(); err != nil {
+			logger.Error("systemd readiness notification failed", "error", err)
 		}
 	}
-	publish()
 	ticker := time.NewTicker(cfg.Monitor.Interval.TimeDuration())
 	defer ticker.Stop()
 	for {
@@ -204,7 +220,7 @@ func runMonitor(args []string, stderr io.Writer) int {
 		case <-ctx.Done():
 			return 0
 		case <-ticker.C:
-			publish()
+			_ = publish()
 		}
 	}
 }

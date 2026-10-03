@@ -4,12 +4,19 @@ After=network-online.target mosquitto.service
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
 User=orangepi-monitor
 Group=orangepi-monitor
 ExecStart=/usr/local/bin/orangepi-monitor --config /etc/orangepi-monitor/config.yaml
 Restart=on-failure
+# An unprovisioned device waits out its whole pairing window
+# (device.pairing_window, operator-paced, minutes by default and
+# configurable) before it connects to MQTT and signals READY=1 below. A
+# fixed TimeoutStartSec would kill that legitimate wait, so disable it
+# entirely instead of guessing a number.
 RestartSec=5
+TimeoutStartSec=0
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict

@@ -115,3 +115,34 @@ O repositório fica gravável para `orangepi` porque Git e compilação executam
 sob esse usuário, mas a instalação final é feita por root. Considere acesso de
 escrita ao repositório, à deploy key e pushes diretos para `main` como controle
 do Orange Pi. Proteja `main` com o workflow de CI antes de habilitar o agente.
+
+## Deploy via push (GitHub Actions)
+
+`DEPLOY_AUTOMATION_SPEC.md` (na raiz do `Dev`) substitui o agente pull-based
+acima por um modelo push: o job `verify` de `.github/workflows/ci.yml`
+agora também empacota `deploy/orangepi-monitor.service` no artefato de
+release publicado e registra seu checksum em `release-manifest.json`
+(`schema_version: 2`). Um novo job `deploy`, condicionado a `needs:
+publish` e a um label de runner self-hosted (`orangepi-monitor-deploy`) que
+só este Orange Pi possui, baixa esse artefato e executa `sudo
+/usr/local/sbin/orangepi-apply monitor release`. O Pi não faz checkout,
+build nem testes nesse caminho - tudo isso já aconteceu na CI hospedada no
+GitHub antes do artefato ser publicado.
+
+Esse caminho exige uma mudança já aplicada em `cmd/orangepi-monitor/main.go`
+e `deploy/orangepi-monitor.service`: a unit passou de `Type=simple` para
+`Type=notify`, e o processo só sinaliza `READY=1` (via
+`internal/sdnotify`) depois de conectar ao MQTT **e** publicar a primeira
+telemetria com sucesso. Isso é o que torna `systemctl is-active` depois de
+um restart uma verificação funcional real, em vez de apenas "o processo não
+morreu imediatamente" - exatamente a lacuna que o instalador precisa para
+decidir entre sucesso e rollback.
+
+O instalador (`orangepi-apply`), sua regra de sudoers e a configuração dos
+runners self-hosted vivem no repositório separado `orangepi-deploy`
+(irmão deste), não aqui - veja o README dele para o checklist de bootstrap
+e cutover. **Os dois caminhos de atualização coexistem hoje.** O timer
+acima continua rodando até a bateria de testes de
+`orangepi-deploy/README.md` ser validada neste dispositivo e o timer ser
+desabilitado explicitamente; esta seção, por si só, não muda como o Pi é
+atualizado.
