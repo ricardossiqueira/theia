@@ -15,7 +15,7 @@ After=network-online.target mosquitto-dynsec.service
 Wants=network-online.target
 
 [Container]
-Image=ghcr.io/ricardossiqueira/orangepi-monitor:latest
+Image=ghcr.io/ricardossiqueira/theia:latest
 AutoUpdate=registry
 # Host networking, not bridged/NAT: this process announces itself via
 # mDNS (_iot-device._tcp) for the gateway to discover during pairing,

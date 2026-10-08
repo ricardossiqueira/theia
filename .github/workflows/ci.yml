@@ -62,5 +62,5 @@ jobs:
           build-args: |
             REVISION=${{ github.sha }}
           tags: |
-            ghcr.io/ricardossiqueira/orangepi-monitor:${{ github.sha }}
-            ghcr.io/ricardossiqueira/orangepi-monitor:latest
+            ghcr.io/ricardossiqueira/theia:${{ github.sha }}
+            ghcr.io/ricardossiqueira/theia:latest

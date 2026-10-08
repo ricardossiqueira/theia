@@ -5,7 +5,7 @@
 solto no host. A imagem é construída na CI hospedada
 (`.github/workflows/ci.yml`'s `publish-image` job, a partir do
 `Containerfile` na raiz do repositório) e publicada em
-`ghcr.io/ricardossiqueira/orangepi-monitor` - nada é compilado no Orange
+`ghcr.io/ricardossiqueira/theia` - nada é compilado no Orange
 Pi. A configuração YAML continua em `/etc/orangepi-monitor/config.yaml`;
 identidade e credenciais MQTT provisionadas continuam em
 `/var/lib/orangepi-monitor` (`identity.json`, `provisioning.json`),
@@ -41,7 +41,7 @@ para apagar o provisionamento e reabrir o pareamento de propósito:
 
 ```bash
 podman run --rm -v /var/lib/orangepi-monitor:/var/lib/orangepi-monitor \
-  --user 65532:65532 ghcr.io/ricardossiqueira/orangepi-monitor:latest \
+  --user 65532:65532 ghcr.io/ricardossiqueira/theia:latest \
   forget --config /etc/orangepi-monitor/config.yaml
 sudo systemctl restart orangepi-monitor.service
 ```
